@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import {Grid, IconButton, Card} from '@material-ui/core';
 import Paper from '@material-ui/core/Paper';
@@ -14,6 +14,7 @@ import Cart from './cart';
 import Appointment from './appointment';
 import Wishlist from './wishlist';
 import{auth} from "../../services/firebase"
+import ProductDetails from './productPage';
 const theme = createMuiTheme({
   overrides: {
     MuiPaper: {
@@ -74,10 +75,14 @@ const useStyles = makeStyles((theme) => ({
 function HomePage() {
   const classes = useStyles();
   const [activeButton, setActiveButton] = useState('Home');
-
+  const [ProductId, setProductId] = useState(null);
   const handleButtonClick = (buttonName) => {
     setActiveButton(buttonName);
   };
+  useEffect(() => {
+    console.log(ProductId)
+  }, [ProductId])
+  
   return (
     <ThemeProvider theme={theme}>
       <div className={classes.root}>
@@ -101,12 +106,13 @@ function HomePage() {
               </IconButton>
               
             </div>
-            {activeButton==="Home" && <Products />}
+            {activeButton==="Home" && <Products setActiveButton={setActiveButton} setProductId={setProductId}/>}
             {activeButton==="Vets" && <Vet />}
             {activeButton==="Appointment" && <Appointment />}
-            {activeButton==="Wishlist" && <Wishlist />}
-            {activeButton==="Cart" && <Cart />}
-            {activeButton==="Orders" && <Orders />}
+            {activeButton==="Wishlist" && <Wishlist setActiveButton={setActiveButton} setProductId={setProductId}/>}
+            {activeButton==="Cart" && <Cart setActiveButton={setActiveButton} setProductId={setProductId}/>}
+            {activeButton==="Orders" && <Orders setActiveButton={setActiveButton} setProductId={setProductId}/>}
+            {activeButton==="ProductPage" && <ProductDetails productId={ProductId} /> }
             </Card>
           </Grid>
         </Grid>

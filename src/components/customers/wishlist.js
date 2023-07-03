@@ -31,7 +31,13 @@ const useStyles = makeStyles({
       gap: '1rem',
     },
     card: {
+      cursor: "pointer",
       flex: '0 0 300px',
+      transition: 'box-shadow 0.3s',
+      '&:hover': {
+        boxShadow: '0px 3px 8px rgba(0, 0, 0, 0.3)',
+        transform: 'translateY(-2px)',
+      },
     },
     scrollbar: {
       scrollbarWidth: 'thin',
@@ -48,7 +54,7 @@ const useStyles = makeStyles({
     },
     
   });
-const App = () => {
+const App = ({setActiveButton, setProductId}) => {
   const classes = useStyles();
   const { currentUser } = useAuth();
   const [products, setProducts] = useState([]);
@@ -146,7 +152,7 @@ const App = () => {
     <div  className={`${classes.container} ${classes.scrollbar}`}>
       <div className={classes.cardsContainer}>
         {products.map((product, index) => (
-          <Card key={index} className={classes.card}>
+          <Card key={index} className={classes.card} onClick={() =>{setActiveButton("ProductPage"); setProductId(product.uid)}}>
             <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} />
             <CardContent>
               <Typography variant="h5" component="div">

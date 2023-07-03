@@ -266,7 +266,7 @@ function DoctorCards() {
                   <div style={{ marginLeft: '20px' }}>
                     <Typography variant="h6">{doctor.name}</Typography>
                     <Typography variant="body1">Email: {doctor.email}</Typography>
-                    <Typography variant="body1">Phone: {doctor.phone}</Typography>
+                    <Typography variant="body1">Phone: {doctor.phoneNumber}</Typography>
                   </div>
                   <div className={classes.container2}>
                   {reservedDates.get(doctor.uid) && (<Typography variant="h4" className={classes.heading}>
