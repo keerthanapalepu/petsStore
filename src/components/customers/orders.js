@@ -73,7 +73,7 @@ const App = ({setActiveButton, setProductId}) => {
         ...doc.data()
       })));
       const newDocs = await Promise.all(OrdersData.map(async (item) => {
-        const docRef = doc(db, 'product', item.uid);
+        const docRef = doc(db, 'product', item.productId);
         const documentSnapshot = await getDoc(docRef);
         if (documentSnapshot.exists()) {
           const product = documentSnapshot.data();
@@ -107,8 +107,8 @@ const App = ({setActiveButton, setProductId}) => {
     <div  className={`${classes.container} ${classes.scrollbar}`}>
       <div className={classes.cardsContainer}>
         {products.map((product, index) => (
-          <Card key={index} className={classes.card} onClick={() => {setActiveButton("ProductPage"); setProductId(product.uid)}}>
-            <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} />
+          <Card key={index} className={classes.card} >
+            <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} onClick={() => {setActiveButton("ProductPage"); setProductId(product.uid)}}/>
             <CardContent>
               <Typography variant="h5" component="div">
               {index + 1}  { product.name}

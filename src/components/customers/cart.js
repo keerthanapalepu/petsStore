@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import { Card, CardContent, Typography, CardMedia,CardActions, IconButton, Button } from '@mui/material';
 import {AiFillHeart, AiFillDelete } from 'react-icons/ai';
 import { makeStyles } from "@material-ui/core/styles";
-import {  collection, query, orderBy, doc, startAfter, getDocs, getDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import {  collection, query, orderBy,addDoc, doc, startAfter, getDocs, getDoc, deleteDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../services/firebase';
 import { useAuth } from "../../context/authContext";
 import {
@@ -57,6 +57,7 @@ const App = ({setActiveButton, setProductId}) => {
   const classes = useStyles();
   const { currentUser } = useAuth();
   const [products, setProducts] = useState([]);
+  const [amount, setAmount] = useState(0);
   useEffect( () => {
     fetchProducts();
   }, []);
@@ -89,10 +90,11 @@ const App = ({setActiveButton, setProductId}) => {
   }
 
   }
-  const handleCart = async( index, productId) => {
+  const handleCart = async( index, productId, price) => {
     const updatedItems = [...products];
   updatedItems.splice(index, 1);
   setProducts([...updatedItems]);
+  setAmount((prev) => prev - price);
   const CartRef = doc(db, `customer/${currentUser.uid}/Cart`, productId);
   try {
     await deleteDoc(CartRef);
@@ -138,6 +140,7 @@ const App = ({setActiveButton, setProductId}) => {
             if(documentSnapshot1.exists()){
               Fav = true;
             }
+            setAmount((prev) => prev + product.price);
           return {...product, imageUrl: imageUrl, fav: Fav};
         }
        }))
@@ -146,12 +149,58 @@ const App = ({setActiveButton, setProductId}) => {
       console.error('Error fetching cart products:', error);
     }
   }
+  const handlePayment = async (amount) => {
+    await Promise.all(products.map(async (item) => {
+      const CartRef = doc(db, `customer/${currentUser.uid}/Cart`, item.uid);
+      const customerOrdersRef = doc(db, `customer`, currentUser.uid);
+      const supplierOrdersRef = doc(db, `supplier`, item.supplierId);
+      const supplierRef = doc(db, `supplier`, item.supplierId);
+      const productRef = doc(db, `product`, item.uid);
+        try {
+          await deleteDoc(CartRef);
+        } catch (error) {
+          console.error('Error deleting Cart:', error);
+        }
+        try {
+          const documentSnapshot = await getDoc(supplierRef);
+          let activeOrders = documentSnapshot.data().activeOrders + 1 ;
+          let totalAmount = documentSnapshot.data().totalAmount + item.price;
+          await updateDoc(supplierRef, {activeOrders : activeOrders, totalAmount: totalAmount });
+        } catch (error) {
+          console.error('Error updating supplier:', error);
+        }
+        try {
+          await updateDoc(productRef, {quantity : item.quantity - 1 });
+        } catch (error) {
+          console.error('Error updating product:', error);
+        }
+        try {
+          const updatedOrder = {
+            productId : item.uid,
+            userId: currentUser.uid,
+            addedOn : serverTimestamp(),
+            price: item.price
+          };
+          await addDoc(
+            collection(customerOrdersRef, "Orders"),
+            updatedOrder
+          );
+          await addDoc(
+            collection(supplierOrdersRef, "Orders"),
+            updatedOrder
+          );
+        } catch (error) {
+          console.error('Error updating Orders:', error);
+        }
+    }))
+    setProducts([]);
+  }
   return (
     <div  className={`${classes.container} ${classes.scrollbar}`}>
       <div className={classes.cardsContainer}>
         {products.map((product, index) => (
-          <Card key={index} className={classes.card} onClick={() => {setActiveButton("ProductPage"); setProductId(product.uid)}}>
-            <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} />
+          <Card key={index} className={classes.card}>
+            <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} onClick={() => {setActiveButton("ProductPage"); setProductId(product.uid)}}/>
             <CardContent>
               <Typography variant="h5" component="div">
               {index + 1}  { product.name}
@@ -170,15 +219,17 @@ const App = ({setActiveButton, setProductId}) => {
             <IconButton aria-label="Add to Wishlist" onClick={() => handleFav(product.fav, index, product.uid)}  style={product.fav ? { color: '#0C364F' } : {}}>
               <AiFillHeart />
             </IconButton>
-            <IconButton aria-label="Add to Cart"   onClick={() => handleCart(index, product.uid)}>
+            <IconButton aria-label="Add to Cart"   onClick={() => handleCart(index, product.uid, product.price)}>
               <AiFillDelete />
             </IconButton>
           </CardActions>
 
           </Card>
         ))}
-        {/* paymnets will be implemented here */}
       </div>
+      <Button  onClick={() => handlePayment(amount)}  style={{ marginLeft: "auto", background: "black", color: "white" }} >
+      Buy {amount}/-
+    </Button>
     </div>
   );
 };

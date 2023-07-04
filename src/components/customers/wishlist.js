@@ -152,8 +152,8 @@ const App = ({setActiveButton, setProductId}) => {
     <div  className={`${classes.container} ${classes.scrollbar}`}>
       <div className={classes.cardsContainer}>
         {products.map((product, index) => (
-          <Card key={index} className={classes.card} onClick={() =>{setActiveButton("ProductPage"); setProductId(product.uid)}}>
-            <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} />
+          <Card key={index} className={classes.card} >
+            <CardMedia component="img" height="140" image={product.imageUrl} alt={product.name} onClick={() =>{setActiveButton("ProductPage"); setProductId(product.uid)}}/>
             <CardContent>
               <Typography variant="h5" component="div">
               {index + 1}  { product.name}
