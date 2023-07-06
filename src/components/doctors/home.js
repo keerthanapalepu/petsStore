@@ -8,6 +8,7 @@ import { MdCalendarToday } from 'react-icons/md';
 import {FaUserDoctor} from 'react-icons/fa6'
 import Profile from './profile';
 import Appointment from './appointment';
+import PrevAppointment from './prevAppointments';
 import{auth} from "../../services/firebase"
 const theme = createMuiTheme({
   overrides: {
@@ -97,6 +98,7 @@ function HomePage() {
             </div>
             {activeButton==="Appointment" && <Appointment />}
             {activeButton==="Profile" && <Profile /> }
+            {activeButton==="PrevAppointment" && <PrevAppointment /> }
             </Card>
           </Grid>
         </Grid>

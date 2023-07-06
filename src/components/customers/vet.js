@@ -55,7 +55,7 @@ function DoctorCards() {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const times = [];
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 12; i++) {
     times.push(`${i}:00`);
     times.push(`${i}:30`);
   }
@@ -196,21 +196,12 @@ function DoctorCards() {
     const documentSnapshot = await getDoc(DoctorRef);
     let dayFee = documentSnapshot.exists() ? documentSnapshot.data().dayFee : 0;
     let fee = dayFee +  (end -start) * 200;
-    try {
-      const updated = {
-        [`${currentUser.uid}_${start}`] : [start, end, "active"],
-        dayFee :  fee
-      };
-      
-      await setDoc(DoctorRef, updated, {merge : true});
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-    }
+    
 
     const Doctor = doc(db, `doctor`, doctorId);
     const DoctorSnapshot = await getDoc(Doctor);
-    let totalFee =  DoctorSnapshot.data().totalFee;
-    let activeAppointments =  DoctorSnapshot.data().activeAppointments;
+    let totalFee =  DoctorSnapshot.data().totalFee? DoctorSnapshot.data().totalFee : 0;
+    let activeAppointments =  DoctorSnapshot.data().activeAppointments? DoctorSnapshot.data().activeAppointments : 0;
     try {
       const updated = {
         activeAppointments: activeAppointments + 1,
@@ -241,6 +232,18 @@ function DoctorCards() {
       );
       const Ref = doc(db, `customer/${currentUser.uid}/Appointment`, userAppRef.id);
       await setDoc(Ref, {uid :  userAppRef.id}, {merge : true});
+      try {
+        const updated = {
+          [`${currentUser.uid}_${start}`] : [start, end, "active", (end -start) * 200, userAppRef.id],
+          dayFee :  fee,
+          date: selectedDate
+        };
+        
+        await setDoc(DoctorRef, updated, {merge : true});
+      } catch (error) {
+        console.error('Error updating appointment:', error);
+      }
+
     } catch (error) {
       console.error('Error updating appointment:', error);
     }

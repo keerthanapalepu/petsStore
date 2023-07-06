@@ -49,6 +49,7 @@ const Appointments = () => {
   }, []);
 
   const fetchAppointments = async () => {
+    setAppointments([]);
     try {
       const AppointmentRef = collection(db, `customer/${currentUser.uid}/Appointment`);
       const q = query(AppointmentRef, orderBy("status"));
@@ -77,7 +78,7 @@ const Appointments = () => {
     let fee =  (arrayData[1] - arrayData[0]) * 200;
     try {
       const updated = {
-        [`${currentUser.uid}_${start}`] : [arrayData[0], arrayData[1], "cancelled"],
+        [`${currentUser.uid}_${start}`] : [arrayData[0], arrayData[1], "cancelled", fee, appointmentId],
         dayFee :  documentSnapshot.data().dayFee - fee
       };
       

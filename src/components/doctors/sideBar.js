@@ -5,7 +5,7 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import { MdCalendarToday } from 'react-icons/md';
-import {FaUserDoctor} from 'react-icons/fa6'
+import {FaUserDoctor, FaClipboardList} from 'react-icons/fa6'
 const useStyles = makeStyles((theme) => ({
   root: {
     marginTop: '50px',
@@ -52,6 +52,12 @@ function SideBar({handleButtonClick}) {
             <MdCalendarToday />
           </ListItemIcon>
           <ListItemText primary="Appointment" className={classes.listItemText}  />
+        </ListItem>
+        <ListItem button className={classes.listItem} onClick={() => handleButtonClick('PrevAppointment')}>
+          <ListItemIcon className={classes.listItemIcon}>
+            <FaClipboardList />
+          </ListItemIcon>
+          <ListItemText primary="PrevAppointment" className={classes.listItemText}  />
         </ListItem>
       </List>
     </div>

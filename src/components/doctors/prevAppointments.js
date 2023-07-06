@@ -47,14 +47,14 @@ const Appointments = () => {
 
     fetchAppointments();
   }, []);
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() -1);
-  const yesterdayISOString = yesterday.toISOString().split('T')[0];
+  const today = new Date();
+  today.setDate(today.getDate());
+  const todayISOString = today.toISOString().split('T')[0];
   const fetchAppointments = async () => {
     setAppointments([])
     try {
       const AppointmentRef = collection(db, `doctor/${currentUser.uid}/Appointment`);
-      const q = query(AppointmentRef, orderBy("date","asc"), startAfter(yesterdayISOString));
+      const q = query(AppointmentRef, orderBy("date","desc"), startAfter(todayISOString));
       const querySnapshot = await getDocs(q);
       
       const AppointmentData = await Promise.all(querySnapshot.docs.map((doc) => ({
@@ -84,65 +84,6 @@ const Appointments = () => {
     }
   }
 
-  const handleCancelAppointment = async (appointmentId, selectedDate, start, userId) => {
-    const DoctorRef = doc(db, `doctor/${currentUser.uid}/Appointment`, selectedDate);
-    const documentSnapshot = await getDoc(DoctorRef);
-    let arrayData = documentSnapshot.data()[`${userId}_${start}`];
-    let fee =  (arrayData[1] - arrayData[0]) * 200;
-    try {
-      const updated = {
-        [`${userId}_${start}`] : [arrayData[0], arrayData[1], "unavaliable", fee, appointmentId],
-        dayFee :  documentSnapshot.data().dayFee - fee
-      };
-      
-      await setDoc(DoctorRef, updated, {merge : true});
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-    }
-
-
-    const Doctor = doc(db, `doctor`, currentUser.uid);
-    const DoctorSnapshot = await getDoc(Doctor);
-    let totalFee =  DoctorSnapshot.data().totalFee;
-    let activeAppointments =  DoctorSnapshot.data().activeAppointments;
-    try {
-      const updated = {
-        activeAppointments: activeAppointments - 1,
-        totalFee : totalFee - fee
-      };
-      
-      await setDoc(Doctor, updated, {merge : true});
-    } catch (error) {
-      console.error('Error updating doctor:', error);
-    }
-
-    const refundRef = doc(db, `refund`, appointmentId);
-    try {
-      const updated = {
-        uid : appointmentId,
-        customer: userId,
-        doctor: currentUser.uid,
-        refundAmount: fee
-      };
-      
-      await setDoc(refundRef, updated, {merge : true});
-    } catch (error) {
-      console.error('Error updating refund:', error);
-    }
-
-    const currentUserDetails = doc(db, `customer/${userId}/Appointment`, appointmentId);
-    try {
-      const updated = {
-        status: "doctor unavaliable",
-      };
-      
-      await setDoc(currentUserDetails, updated, {merge : true});
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-    }
-    fetchAppointments();
-  };
-
   return (
     <div className={`${classes.container} ${classes.scrollbar}`}>
       <Typography variant="h4" component="h1" align="center">
@@ -159,7 +100,6 @@ const Appointments = () => {
               <TableCell>Slot</TableCell>
               <TableCell>Paid</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -175,16 +115,8 @@ const Appointments = () => {
                                 appointment.end < 9 || appointment.end === 12 ? 'pm' : 'am'
                               }`}</TableCell>
                 <TableCell>{appointment.fee}</TableCell>
-                <TableCell>{appointment.status}</TableCell>
+                <TableCell>{appointment.status === "active"? "completed" : appointment.status}</TableCell>
                 <TableCell>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    disabled={!(appointment.status === "active")}
-                    onClick={() => handleCancelAppointment(appointment.appointmentId, appointment.date, appointment.start, appointment.userId)}
-                  >
-                    Unavalible
-                  </Button>
                 </TableCell>
               </TableRow>
               ))}
