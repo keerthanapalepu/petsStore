@@ -139,7 +139,7 @@ function DoctorCards() {
     const allSlots = [[1 , 6], [9, 12]]
 
     reservedSlots.map((Rslot) => {
-      const [Rstart, Rend, status] = Rslot;
+      const [Rstart, Rend, status, fee, id] = Rslot;
       if(status === "active" || status === "unavaliable"){
         for (let index = 0; index < allSlots.length; index++) {
           const [Astart, Aend] = allSlots[index];
