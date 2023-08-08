@@ -1,8 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import {TextField, Grid, Button, Typography } from '@material-ui/core';
-import { collection, query, orderBy, doc, getDocs,addDoc,  getDoc, deleteDoc, serverTimestamp, setDoc, startAfter } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDocs,addDoc,  getDoc, setDoc } from 'firebase/firestore';
 import { db, storage } from '../../services/firebase';
-import Resizer from 'react-image-file-resizer';
 import { makeStyles } from '@material-ui/core/styles';
 import {
   getDownloadURL,

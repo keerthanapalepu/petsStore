@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, Grid, Button, TextField, Typography, Container } from '@mui/material';
 import { collection, query, orderBy, doc, getDocs,addDoc,  getDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db, storage } from '../../services/firebase';
+import { db, storage, httpsCallable, functions } from '../../services/firebase';
 import { makeStyles } from "@material-ui/core/styles";
 import { useAuth } from "../../context/authContext";
 import { toast } from 'react-toastify';
@@ -85,7 +85,7 @@ function DoctorCards() {
       await Promise.all(snapshot.docs.map(async (document) => {
         const doctorData = document.data();
         var imageUrl = "";
-        const storageRef = ref(storage, "/doctorImages/doctorUID.jpg");
+        const storageRef = ref(storage, `/doctorImages/${document.id}.jpg`);
 
         try {
           const url = await getDownloadURL(storageRef);
@@ -189,67 +189,98 @@ function DoctorCards() {
       }
     }
   }
-  const handleAppointmentBooking = async (start, end, doctorId) => {
-    // Find the selected date for the particular doctor using doctorId
-    const selectedDate = selectedDates.get(doctorId);
-    const DoctorRef = doc(db, `doctor/${doctorId}/Appointment`, selectedDate);
-    const documentSnapshot = await getDoc(DoctorRef);
-    let dayFee = documentSnapshot.exists() ? documentSnapshot.data().dayFee : 0;
-    let fee = dayFee +  (end -start) * 200;
-    
+ 
+const initPayment = (data) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      key: "rzp_test_i10pSJmi7llEqT",
+      amount: data.amount,
+      currency: data.currency,
+      name: "Book Appointment",
+      description: "Test Transaction",
+      order_id: data.id,
+      handler: async (response) => {
+        try {
+          const verifyPayment = httpsCallable(functions, 'paymentVerification');
+          await verifyPayment(response);
+          console.log(response); // Payment was successful
+          resolve();
+        } catch (error) {
+          console.error('Error:', error);
+          reject(error);
+        }
+      },
+      theme: {
+        color: "#3399cc",
+      },
+    };
+    const rzp1 = new window.Razorpay(options);
+    rzp1.open();
+  });
+};
+
+const handlePayment = async (fee) => {
+  try {
+    const createOrder = httpsCallable(functions, 'createOrder');
+    const response = await createOrder({ amount: fee });
+    await initPayment(response.data.data);
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+};
+
+const handleAppointmentBooking = async (start, end, doctorId) => {
+  const selectedDate = selectedDates.get(doctorId);
+  const DoctorRef = doc(db, `doctor/${doctorId}/Appointment`, selectedDate);
+  const documentSnapshot = await getDoc(DoctorRef);
+  let dayFee = documentSnapshot.exists() ? documentSnapshot.data().dayFee : 0;
+  let fee = dayFee + (end - start) * 200;
+
+  try {
+    await handlePayment((end - start) * 200); // Payment is processed here
 
     const Doctor = doc(db, `doctor`, doctorId);
     const DoctorSnapshot = await getDoc(Doctor);
-    let totalFee =  DoctorSnapshot.data().totalFee? DoctorSnapshot.data().totalFee : 0;
-    let activeAppointments =  DoctorSnapshot.data().activeAppointments? DoctorSnapshot.data().activeAppointments : 0;
-    try {
-      const updated = {
-        activeAppointments: activeAppointments + 1,
-        totalFee : totalFee + (end -start) * 200
-      };
-      
-      await setDoc(Doctor, updated, {merge : true});
-    } catch (error) {
-      console.error('Error updating doctor:', error);
-    }
+    let totalFee = DoctorSnapshot.data().totalFee ? DoctorSnapshot.data().totalFee : 0;
+    let activeAppointments = DoctorSnapshot.data().activeAppointments ? DoctorSnapshot.data().activeAppointments : 0;
 
-    
+    const updatedDoctorData = {
+      activeAppointments: activeAppointments + 1,
+      totalFee: totalFee + (end - start) * 200,
+    };
+
+    await setDoc(Doctor, updatedDoctorData, { merge: true });
+
     const currentUserDetails = doc(db, "customer", currentUser.uid);
-    
-    try {
-      const updated = {
-        timeRange : [start, end],
-        paid: (end -start) * 200,
-        doctorId: doctorId,
-        date: selectedDate,
-        status: "active",
-        uid: ""
-      };
-      
-      const userAppRef = await addDoc(
-        collection(currentUserDetails, "Appointment"),
-        updated
-      );
-      const Ref = doc(db, `customer/${currentUser.uid}/Appointment`, userAppRef.id);
-      await setDoc(Ref, {uid :  userAppRef.id}, {merge : true});
-      try {
-        const updated = {
-          [`${currentUser.uid}_${start}`] : [start, end, "active", (end -start) * 200, userAppRef.id],
-          dayFee :  fee,
-          date: selectedDate
-        };
-        
-        await setDoc(DoctorRef, updated, {merge : true});
-      } catch (error) {
-        console.error('Error updating appointment:', error);
-      }
 
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-    }
+    const newAppointmentData = {
+      timeRange: [start, end],
+      paid: (end - start) * 200,
+      doctorId: doctorId,
+      date: selectedDate,
+      status: "active",
+      uid: "",
+    };
+
+    const userAppRef = await addDoc(collection(currentUserDetails, "Appointment"), newAppointmentData);
+    const Ref = doc(db, `customer/${currentUser.uid}/Appointment`, userAppRef.id);
+    await setDoc(Ref, { uid: userAppRef.id }, { merge: true });
+
+    const updatedDoctorAppointmentData = {
+      [`${currentUser.uid}_${start}`]: [start, end, "active", (end - start) * 200, userAppRef.id],
+      dayFee: fee,
+      date: selectedDate,
+    };
+
+    await setDoc(DoctorRef, updatedDoctorAppointmentData, { merge: true });
+
     handleDateChange(selectedDates.get(doctorId), doctorId);
-    
-  };
+  } catch (error) {
+    console.error('Error handling appointment booking:', error);
+  }
+};
+
 
   return (
     <Container className={`${classes.container} ${classes.scrollbar}`}>

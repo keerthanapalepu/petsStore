@@ -68,7 +68,7 @@ const useStyles = makeStyles((theme) => ({
 
 function HomePage() {
   const classes = useStyles();
-  const [activeButton, setActiveButton] = useState('Appointment');
+  const [activeButton, setActiveButton] = useState('Orders');
   const handleButtonClick = (buttonName) => {
     setActiveButton(buttonName);
   };

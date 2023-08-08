@@ -3,8 +3,8 @@ import { initializeApp, getApp } from "firebase/app";
 import {getAuth} from 'firebase/auth'
 import { getStorage } from "firebase/storage";
 import { getFirestore } from "@firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-// import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
+// import { getFunctions, httpsCallable } from "firebase/functions";
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -20,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 export const auth =  getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
-// export const functions = getFunctions(getApp());
-// connectFunctionsEmulator(functions, "localhost", 5001);
+// export const functions = getFunctions(app);
+export const functions = getFunctions(getApp());
+connectFunctionsEmulator(functions, "localhost", 5001);
 export { httpsCallable };

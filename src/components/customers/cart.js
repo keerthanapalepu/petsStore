@@ -3,7 +3,7 @@ import { Card, CardContent, Typography, CardMedia,CardActions, IconButton, Butto
 import {AiFillHeart, AiFillDelete } from 'react-icons/ai';
 import { makeStyles } from "@material-ui/core/styles";
 import {  collection, query, orderBy,addDoc, doc, startAfter, getDocs, getDoc, deleteDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
-import { db, storage } from '../../services/firebase';
+import { db, storage, httpsCallable, functions } from '../../services/firebase';
 import { useAuth } from "../../context/authContext";
 import {
   getDownloadURL,
@@ -90,6 +90,47 @@ const App = ({setActiveButton, setProductId}) => {
   }
 
   }
+
+   
+const initPayment = (data) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      key: "rzp_test_i10pSJmi7llEqT",
+      amount: data.amount,
+      currency: data.currency,
+      name: "Buy Products",
+      description: "Test Transaction",
+      order_id: data.id,
+      handler: async (response) => {
+        try {
+          const verifyPayment = httpsCallable(functions, 'paymentVerification');
+          await verifyPayment(response);
+          console.log(response); // Payment was successful
+          resolve();
+        } catch (error) {
+          console.error('Error:', error);
+          reject(error);
+        }
+      },
+      theme: {
+        color: "#3399cc",
+      },
+    };
+    const rzp1 = new window.Razorpay(options);
+    rzp1.open();
+  });
+};
+
+const handlePayment = async (fee) => {
+  try {
+    const createOrder = httpsCallable(functions, 'createOrder');
+    const response = await createOrder({ amount: fee });
+    await initPayment(response.data.data);
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+};
   const handleCart = async( index, productId, price) => {
     const updatedItems = [...products];
   updatedItems.splice(index, 1);
@@ -149,36 +190,43 @@ const App = ({setActiveButton, setProductId}) => {
       console.error('Error fetching cart products:', error);
     }
   }
-  const handlePayment = async (amount) => {
-    await Promise.all(products.map(async (item) => {
-      const CartRef = doc(db, `customer/${currentUser.uid}/Cart`, item.uid);
-      const customerOrdersRef = doc(db, `customer`, currentUser.uid);
-      const supplierOrdersRef = doc(db, `supplier`, item.supplierId);
-      const supplierRef = doc(db, `supplier`, item.supplierId);
-      const productRef = doc(db, `product`, item.uid);
+  const buyProducts = async (amount) => {
+    try {
+      await handlePayment(amount); 
+  
+      await Promise.all(products.map(async (item) => {
+        const CartRef = doc(db, `customer/${currentUser.uid}/Cart`, item.uid);
+        const customerOrdersRef = doc(db, `customer`, currentUser.uid);
+        const supplierOrdersRef = doc(db, `supplier`, item.supplierId);
+        const supplierRef = doc(db, `supplier`, item.supplierId);
+        const productRef = doc(db, `product`, item.uid);
+  
         try {
           await deleteDoc(CartRef);
         } catch (error) {
           console.error('Error deleting Cart:', error);
         }
+  
         try {
           const documentSnapshot = await getDoc(supplierRef);
-          let activeOrders = documentSnapshot.data().activeOrders + 1 ;
+          let activeOrders = documentSnapshot.data().activeOrders + 1;
           let totalAmount = documentSnapshot.data().totalAmount + item.price;
-          await updateDoc(supplierRef, {activeOrders : activeOrders, totalAmount: totalAmount });
+          await updateDoc(supplierRef, { activeOrders: activeOrders, totalAmount: totalAmount });
         } catch (error) {
           console.error('Error updating supplier:', error);
         }
+  
         try {
-          await updateDoc(productRef, {quantity : item.quantity - 1 });
+          await updateDoc(productRef, { quantity: item.quantity - 1 });
         } catch (error) {
           console.error('Error updating product:', error);
         }
+  
         try {
           const updatedOrder = {
-            productId : item.uid,
+            productId: item.uid,
             userId: currentUser.uid,
-            addedOn : serverTimestamp(),
+            addedOn: serverTimestamp(),
             price: item.price
           };
           await addDoc(
@@ -192,9 +240,14 @@ const App = ({setActiveButton, setProductId}) => {
         } catch (error) {
           console.error('Error updating Orders:', error);
         }
-    }))
-    setProducts([]);
-  }
+      }));
+  
+      setProducts([]);
+    } catch (error) {
+      console.error('Error during payment:', error);
+    }
+  };
+  
   return (
     <div  className={`${classes.container} ${classes.scrollbar}`}>
       <div className={classes.cardsContainer}>
@@ -227,7 +280,7 @@ const App = ({setActiveButton, setProductId}) => {
           </Card>
         ))}
       </div>
-      <Button  onClick={() => handlePayment(amount)}  style={{ marginLeft: "auto", background: "black", color: "white" }} >
+      <Button  onClick={() => buyProducts(amount)}  style={{ marginLeft: "auto", background: "black", color: "white" }} >
       Buy {amount}/-
     </Button>
     </div>
